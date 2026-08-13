@@ -110,6 +110,26 @@ with tab1:
         if col_cong:
             m3.metric("Tổng số cổng", f"{pd.to_numeric(df_filtered[col_cong], errors='coerce').sum():,.0f}")
 
+    # --- BẢNG THÔNG TIN BAO QUÁT THEO TỪNG ĐỐI TÁC ---
+    if col_doitac and len(df_filtered) > 0:
+        st.markdown("### 📑 Tổng hợp số liệu theo Đối tác")
+        agg_dict = {col_tram: 'count'} if col_tram else {}
+        if col_hodan:
+            df_filtered[col_hodan] = pd.to_numeric(df_filtered[col_hodan], errors='coerce').fillna(0)
+            agg_dict[col_hodan] = 'sum'
+        if col_cong:
+            df_filtered[col_cong] = pd.to_numeric(df_filtered[col_cong], errors='coerce').fillna(0)
+            agg_dict[col_cong] = 'sum'
+        
+        df_summary = df_filtered.groupby(col_doitac).agg(agg_dict).reset_index()
+        rename_cols = {col_doitac: "Đối tác"}
+        if col_tram: rename_cols[col_tram] = "Số lượng trạm"
+        if col_hodan: rename_cols[col_hodan] = "Tổng hộ dân"
+        if col_cong: rename_cols[col_cong] = "Tổng số cổng"
+        df_summary = df_summary.rename(columns=rename_cols)
+        
+        st.dataframe(df_summary, use_container_width=True, hide_index=True)
+
     st.markdown("### 📋 Chi tiết danh mục trạm")
     st.dataframe(df_filtered, use_container_width=True, hide_index=True)
 
