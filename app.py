@@ -74,6 +74,8 @@ col_diachi = get_col(df_raw, ["địa chỉ", "dịa chỉ", "địa bàn"])
 col_doitac = get_col(df_raw, ["đối tác", "đơn vị"])
 col_hodan = get_col(df_raw, ["tổng hộ dân", "hộ dân"])
 col_cong = get_col(df_raw, ["tổng số cổng", "số cổng"])
+col_keocap = get_col(df_raw, ["kéo cáp", "keo cap"])
+col_hannoi = get_col(df_raw, ["hàn nối", "han noi"])
 
 if user["role"] == "admin":
     df = df_raw.copy()
@@ -110,28 +112,28 @@ with tab1:
         if col_cong:
             m3.metric("Tổng số cổng", f"{pd.to_numeric(df_filtered[col_cong], errors='coerce').sum():,.0f}")
 
-    # --- BẢNG THÔNG TIN BAO QUÁT THEO TỪNG ĐỐI TÁC ---
-    if col_doitac and len(df_filtered) > 0:
-        st.markdown("### 📑 Tổng hợp số liệu theo Đối tác")
-        agg_dict = {col_tram: 'count'} if col_tram else {}
-        if col_hodan:
-            df_filtered[col_hodan] = pd.to_numeric(df_filtered[col_hodan], errors='coerce').fillna(0)
-            agg_dict[col_hodan] = 'sum'
-        if col_cong:
-            df_filtered[col_cong] = pd.to_numeric(df_filtered[col_cong], errors='coerce').fillna(0)
-            agg_dict[col_cong] = 'sum'
+    # --- BẢNG TỔNG HỢP SỐ LIỆU THI CÔNG (KHÔNG CÓ CỘT ĐỐI TÁC) ---
+    if len(df_filtered) > 0:
+        st.markdown("### 📑 Tổng hợp khối lượng thi công")
+        total_tram = len(df_filtered)
+        total_keo = pd.to_numeric(df_filtered[col_keocap], errors='coerce').sum() if col_keocap else 0
+        total_han = pd.to_numeric(df_filtered[col_hannoi], errors='coerce').sum() if col_hannoi else 0
         
-        df_summary = df_filtered.groupby(col_doitac).agg(agg_dict).reset_index()
-        rename_cols = {col_doitac: "Đối tác"}
-        if col_tram: rename_cols[col_tram] = "Số lượng trạm"
-        if col_hodan: rename_cols[col_hodan] = "Tổng hộ dân"
-        if col_cong: rename_cols[col_cong] = "Tổng số cổng"
-        df_summary = df_summary.rename(columns=rename_cols)
-        
+        df_summary = pd.DataFrame([{
+            "Tổng số trạm được giao": total_tram,
+            "Tổng thi công kéo cáp": f"{total_keo:,.1f}",
+            "Tổng hàn nối": f"{total_han:,.0f}"
+        }])
         st.dataframe(df_summary, use_container_width=True, hide_index=True)
 
-    st.markdown("### 📋 Chi tiết danh mục trạm")
-    st.dataframe(df_filtered, use_container_width=True, hide_index=True)
+    # --- DANH SÁCH CHI TIẾT GỒM TÊN TRẠM, KÉO CÁP, HÀN NỐI ---
+    st.markdown("### 📋 Danh sách chi tiết các trạm")
+    cols_hien_thi = [c for c in [col_tram, col_keocap, col_hannoi] if c]
+    if cols_hien_thi:
+        df_hien_thi = df_filtered[cols_hien_thi].copy()
+        st.dataframe(df_hien_thi, use_container_width=True, hide_index=True)
+    else:
+        st.dataframe(df_filtered, use_container_width=True, hide_index=True)
 
 with tab2:
     st.subheader("🏗️ Báo cáo sản lượng thi công thực tế")
