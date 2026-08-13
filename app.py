@@ -90,7 +90,53 @@ with tab1:
     if user["role"] == "admin":
         st.markdown("### 📊 Tổng quan tiến độ thi công - Hai Nhà Thầu (VCC & Xuân Long)")
         
-        csv_data = df_raw.to_csv(index=False).encode('utf-8-sig')
+        # --- TẠO FILE XUẤT TỔNG HỢP THEO YÊU CẦU ---
+        def generate_export_data():
+            export_rows = []
+            
+            def process_contractor_export(contractor_title, keywords):
+                if col_doitac:
+                    mask = False
+                    for kw in keywords:
+                        mask = mask | df_raw[col_doitac].str.contains(kw, case=False, na=False)
+                    df_sub = df_raw[mask].copy()
+                else:
+                    df_sub = pd.DataFrame()
+                
+                export_rows.append({"Tên Trạm": f"=== NHÀ THẦU: {contractor_title.upper()} ===", "Kéo cáp (mét)": "", "Hàn nối": ""})
+                
+                total_keo_val = 0
+                total_han_val = 0
+                
+                for _, row in df_sub.iterrows():
+                    t_name = row[col_tram] if col_tram else ""
+                    k_val = pd.to_numeric(row[col_keocap], errors='coerce') if col_keocap else 0
+                    h_val = pd.to_numeric(row[col_hannoi], errors='coerce') if col_hannoi else 0
+                    
+                    if pd.notna(k_val): total_keo_val += k_val
+                    if pd.notna(h_val): total_han_val += h_val
+                    
+                    export_rows.append({
+                        "Tên Trạm": t_name,
+                        "Kéo cáp (mét)": k_val if pd.notna(k_val) else 0,
+                        "Hàn nối": h_val if pd.notna(h_val) else 0
+                    })
+                
+                # Dòng SUM tổng kết cho nhà thầu
+                export_rows.append({
+                    "Tên Trạm": f"SUM ({contractor_title})",
+                    "Kéo cáp (mét)": total_keo_val,
+                    "Hàn nối": total_han_val
+                })
+                export_rows.append({"Tên Trạm": "", "Kéo cáp (mét)": "", "Hàn nối": ""}) # Dòng trống phân cách
+
+            process_contractor_export("VCC", ["vcc"])
+            process_contractor_export("Xuân Long", ["xuân", "xuan", "long"])
+            
+            df_export = pd.DataFrame(export_rows)
+            return df_export.to_csv(index=False).encode('utf-8-sig')
+
+        csv_data = generate_export_data()
         st.download_button(
             label="📥 Tải Xuống File Tổng Hợp (CSV)",
             data=csv_data,
@@ -104,7 +150,6 @@ with tab1:
         def render_contractor_stats(contractor_name, keywords):
             st.markdown(f"#### 🏢 Nhà thầu: {contractor_name}")
             if col_doitac:
-                # Kiểm tra nhiều từ khóa để bắt chính xác tên nhà thầu
                 mask = False
                 for kw in keywords:
                     mask = mask | df_raw[col_doitac].str.contains(kw, case=False, na=False)
