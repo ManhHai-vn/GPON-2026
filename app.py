@@ -69,14 +69,23 @@ def get_col(df, possible_names):
                 return col
     return None
 
+def get_cols_by_keywords(df, keywords):
+    found = []
+    for col in df.columns:
+        col_l = col.lower()
+        if any(kw in col_l for kw in keywords):
+            found.append(col)
+    return found
+
 col_tram = get_col(df_raw, ["trạm băng rộng", "trạm bằng chữ", "trạm", "tram"])
 col_diachi = get_col(df_raw, ["địa chỉ", "dịa chỉ", "địa bàn"])
 col_doitac = get_col(df_raw, ["đối tác", "đơn vị"])
 col_hodan = get_col(df_raw, ["tổng hộ dân", "hộ dân"])
 col_cong = get_col(df_raw, ["tổng số cổng", "số cổng"])
 
-col_km_giao = get_col(df_raw, ["kéo cáp", "keo cap", "km"])
-col_tu_giao = get_col(df_raw, ["hàn nối", "han noi", "tủ"])
+# Tìm các cột cáp 12fo và 24fo cho phần KM giao
+cols_cap_giao = get_cols_by_keywords(df_raw, ["12fo", "24fo"])
+col_tu_giao = get_col(df_raw, ["tủ", "tu"])
 
 col_keocap = get_col(df_raw, ["kéo cáp", "keo cap"])
 col_hannoi = get_col(df_raw, ["hàn nối", "han noi"])
@@ -194,7 +203,11 @@ with tab1:
             else:
                 df_sub = pd.DataFrame()
             
-            val_km = pd.to_numeric(df_sub[col_km_giao], errors='coerce').sum() if col_km_giao else 0.0
+            # Tính tổng km từ các cột 12fo và 24fo
+            val_km = 0.0
+            for c in cols_cap_giao:
+                val_km += pd.to_numeric(df_sub[c], errors='coerce').fillna(0).sum()
+            
             km_trien_khai = val_km / 1000.0 if val_km > 100 else val_km 
             so_tu = pd.to_numeric(df_sub[col_tu_giao], errors='coerce').sum() if col_tu_giao else 0
             
@@ -240,8 +253,11 @@ with tab1:
             render_contractor_stats(user["role"], [user["role"]])
 
         st.markdown("### 📋 Danh sách chi tiết các trạm")
-        cols_hien_thi = [c for c in [col_tram, col_km_giao, col_tu_giao, col_keocap, col_hannoi] if c]
+        # Gom các cột cần hiển thị: Trạm, các cột cáp 12fo/24fo, cột tủ giao, và các cột thực tế
+        base_cols = [col_tram] + cols_cap_giao + [col_tu_giao, col_keocap, col_hannoi]
+        cols_hien_thi = [c for c in base_cols if c]
         cols_hien_thi = list(dict.fromkeys(cols_hien_thi)) # Loại bỏ cột trùng lặp
+        
         if cols_hien_thi:
             st.dataframe(df[cols_hien_thi], use_container_width=True, hide_index=True)
         else:
