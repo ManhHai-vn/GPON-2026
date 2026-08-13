@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-import io
 import pandas as pd
 import requests
 import streamlit as st
@@ -91,17 +90,13 @@ with tab1:
     if user["role"] == "admin":
         st.markdown("### 📊 Tổng quan tiến độ thi công - Hai Nhà Thầu (VCC & Xuân Long)")
         
-        # Nút xuất Excel tổng hợp cả 2 nhà thầu
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            df_raw.to_excel(writer, index=False, sheet_name='TongHop_GPON')
-        excel_data = output.getvalue()
-        
+        # Xuất file CSV tổng hợp cả 2 nhà thầu (tương thích mọi môi trường)
+        csv_data = df_raw.to_csv(index=False).encode('utf-8-sig')
         st.download_button(
-            label="📥 Xuất File Excel Tổng Hợp (Toàn hệ thống)",
-            data=excel_data,
-            file_name=f"TongHop_TienDo_GPON_{datetime.now().strftime('%Y%m%d')}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            label="📥 Tải Xuống File Tổng Hợp (CSV)",
+            data=csv_data,
+            file_name=f"TongHop_TienDo_GPON_{datetime.now().strftime('%Y%m%d')}.csv",
+            mime="text/csv",
         )
         st.markdown("---")
 
@@ -118,7 +113,6 @@ with tab1:
             if len(df_sub) > 0:
                 tram_giao = len(df_sub)
                 
-                # Tính trạm đã thi công (kéo cáp > 0) và trạm đã hàn (hàn nối > 0)
                 if col_keocap:
                     df_sub[col_keocap] = pd.to_numeric(df_sub[col_keocap], errors='coerce').fillna(0)
                     tram_tc = len(df_sub[df_sub[col_keocap] > 0])
@@ -135,8 +129,8 @@ with tab1:
 
                 with st.container(border=True):
                     st.metric("Trạm được giao", tram_giao)
-                    st.metric("Trạm đã thi công (kéo cáp)", tram_tc)
-                    st.metric("Trạm đã hàn nối", tram_han)
+                    st.metric("Trạm đã thi công", tram_tc)
+                    st.metric("Trạm đã hàn", tram_han)
                     st.metric("Tổng số km đã kéo", f"{tong_km:,.2f} km")
             else:
                 st.info(f"Chưa có dữ liệu cho {contractor_name}")
@@ -152,7 +146,6 @@ with tab1:
         st.dataframe(df_raw, use_container_width=True, hide_index=True)
 
     else:
-        # Giao diện dành riêng cho đối tác thông thường (như cũ)
         st.markdown(f"### 📊 Tổng quan tiến độ ({user['role']})")
         with st.container(border=True):
             m1, m2, m3 = st.columns(3)
