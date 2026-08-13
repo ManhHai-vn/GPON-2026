@@ -241,6 +241,7 @@ with tab1:
 
         st.markdown("### 📋 Danh sách chi tiết các trạm")
         cols_hien_thi = [c for c in [col_tram, col_km_giao, col_tu_giao, col_keocap, col_hannoi] if c]
+        cols_hien_thi = list(dict.fromkeys(cols_hien_thi)) # Loại bỏ cột trùng lặp
         if cols_hien_thi:
             st.dataframe(df[cols_hien_thi], use_container_width=True, hide_index=True)
         else:
