@@ -90,10 +90,8 @@ with tab1:
     if user["role"] == "admin":
         st.markdown("### 📊 Tổng quan tiến độ thi công - Hai Nhà Thầu (VCC & Xuân Long)")
         
-        # --- TẠO FILE XUẤT TỔNG HỢP THEO YÊU CẦU ---
         def generate_export_data():
             export_rows = []
-            
             def process_contractor_export(contractor_title, keywords):
                 if col_doitac:
                     mask = False
@@ -104,7 +102,6 @@ with tab1:
                     df_sub = pd.DataFrame()
                 
                 export_rows.append({"Tên Trạm": f"=== NHÀ THẦU: {contractor_title.upper()} ===", "Kéo cáp (mét)": "", "Hàn nối": ""})
-                
                 total_keo_val = 0
                 total_han_val = 0
                 
@@ -122,13 +119,12 @@ with tab1:
                         "Hàn nối": h_val if pd.notna(h_val) else 0
                     })
                 
-                # Dòng SUM tổng kết cho nhà thầu
                 export_rows.append({
                     "Tên Trạm": f"SUM ({contractor_title})",
                     "Kéo cáp (mét)": total_keo_val,
                     "Hàn nối": total_han_val
                 })
-                export_rows.append({"Tên Trạm": "", "Kéo cáp (mét)": "", "Hàn nối": ""}) # Dòng trống phân cách
+                export_rows.append({"Tên Trạm": "", "Kéo cáp (mét)": "", "Hàn nối": ""})
 
             process_contractor_export("VCC", ["vcc"])
             process_contractor_export("Xuân Long", ["xuân", "xuan", "long"])
@@ -145,6 +141,47 @@ with tab1:
         )
         st.markdown("---")
 
+        # --- BẢNG TỔNG HỢP CHUNG THEO NHÀ THẦU (CÓ DÒNG TỔNG Ở CUỐI) ---
+        st.markdown("### 📋 Bảng tổng hợp số liệu theo nhà thầu")
+        
+        def get_contractor_summary_row(contractor_name, keywords):
+            if col_doitac:
+                mask = False
+                for kw in keywords:
+                    mask = mask | df_raw[col_doitac].str.contains(kw, case=False, na=False)
+                df_sub = df_raw[mask].copy()
+            else:
+                df_sub = pd.DataFrame()
+            
+            km_cap = (pd.to_numeric(df_sub[col_keocap], errors='coerce').sum() / 1000.0) if col_keocap else 0.0
+            so_tu = pd.to_numeric(df_sub[col_hannoi], errors='coerce').sum() if col_hannoi else 0
+            ho_dan = pd.to_numeric(df_sub[col_hodan], errors='coerce').sum() if col_hodan else 0
+            
+            return {
+                "Nhà thầu": contractor_name,
+                "KM cáp (km)": round(km_cap, 2),
+                "Số tủ (Hàn nối)": int(so_tu),
+                "Hộ dân": int(ho_dan)
+            }
+
+        row_vcc = get_contractor_summary_row("VCC", ["vcc"])
+        row_xl = get_contractor_summary_row("Xuân Long", ["xuân", "xuan", "long"])
+        
+        df_summary_table = pd.DataFrame([row_vcc, row_xl])
+        
+        # Thêm hàng TỔNG CỘNG ở cuối bảng
+        total_row = {
+            "Nhà thầu": "TỔNG CỘNG",
+            "KM cáp (km)": round(df_summary_table["KM cáp (km)"].sum(), 2),
+            "Số tủ (Hàn nối)": int(df_summary_table["Số tủ (Hàn nối)"].sum()),
+            "Hộ dân": int(df_summary_table["Hộ dân"].sum())
+        }
+        df_summary_table = pd.concat([df_summary_table, pd.DataFrame([total_row])], ignore_index=True)
+        
+        st.dataframe(df_summary_table, use_container_width=True, hide_index=True)
+        st.markdown("---")
+
+        # Chia 2 cột hiển thị chi tiết 2 nhà thầu
         col_vcc, col_xl = st.columns(2)
 
         def render_contractor_stats(contractor_name, keywords):
