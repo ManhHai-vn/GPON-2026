@@ -10,13 +10,19 @@ st.set_page_config(
     layout="wide",
 )
 
-# ⚠️ THAY ĐƯỜNG LINK WEB APP BẠN VỪA COPY Ở BƯỚC 1 VÀO ĐÂY:
-WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx6maEOM1vMlPj2H85Bm_3Yv9C06nOj1fqNBf-Xu5z6woQ20QSXbrrcJErPncbeIthqjA/exec"
+# ⚠️ Giữ nguyên đường link Web App của bạn
+WEB_APP_URL = (
+    "https://script.google.com/macros/s/THAY_LINK_WEB_APP_CUA_BAN_VAO_DAY/exec"
+)
 
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1VPbF7bLk6JF97kJEGw-TW1JEheUf4etfDO5bLsphyGs/edit#gid=0"
 
 USERS = {
-    "admin": {"pass": "admin123", "role": "admin", "name": "Quản Trị Viên (Admin)"},
+    "admin": {
+        "pass": "admin123",
+        "role": "admin",
+        "name": "Quản Trị Viên (Admin)",
+    },
     "xuanlong": {"pass": "xl123", "role": "Xuân Long", "name": "Đối Tác Xuân Long"},
     "vcc": {"pass": "vcc123", "role": "VCC", "name": "Đối Tác VCC"},
 }
@@ -99,6 +105,7 @@ tab1, tab2 = st.tabs(
     ["📈 Bảng Điều Khiển Tiến Độ", "📝 Đối Tác Nhập Báo Cáo"]
 )
 
+# TAB 1: TIẾN ĐỘ TỔNG QUAN
 with tab1:
     st.subheader(
         f"📌 Tổng quan dữ liệu ({'Toàn bộ' if user['role']=='admin' else user['role']})"
@@ -143,14 +150,15 @@ with tab1:
     st.subheader("📋 Danh sách các trạm thi công")
     st.dataframe(df_filtered, use_container_width=True)
 
+# TAB 2: FORM NHẬP BÁO CÁO MỚI (ĐẦY ĐỦ CÁC TRƯỜNG)
 with tab2:
-    st.subheader("📝 Báo cáo khối lượng hoàn thành trong ngày")
+    st.subheader("📝 Báo cáo sản lượng & kế hoạch thi công hàng ngày")
 
     with st.form("form_bao_cao", clear_on_submit=True):
-        col_input1, col_input2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
 
-        with col_input1:
-            ngay_baocao = st.date_input("Ngày thực hiện:", datetime.now())
+        with col1:
+            ngay_baocao = st.date_input("Ngày thực hiện (Ngay):", datetime.now())
 
             tram_options = []
             if col_tram:
@@ -161,38 +169,68 @@ with tab2:
                 ]
 
             selected_tram = st.selectbox(
-                "Chọn Trạm thi công:", options=tram_options
+                "Chọn Trạm (Tram):", options=tram_options
             )
             doi_tao = st.text_input(
-                "Tên Đơn vị / Đối tác thi công:",
-                value=user["name"],
-                disabled=True,
+                "Đơn vị (Doi_Tao):", value=user["name"], disabled=True
+            )
+            ten_doi = st.text_input(
+                "Tên đội thi công (Tên đội):", placeholder="Ví dụ: Đội 1"
             )
 
-        with col_input2:
-            so_luong_xong = st.number_input(
-                "Số lượng / Số cổng đã hoàn thành:", min_value=0, step=1
+        with col2:
+            da_keo_cap = st.number_input(
+                "Khối lượng đã kéo cáp - mét (Da keo cap):",
+                min_value=0,
+                step=10,
             )
-            ghi_chu = st.text_area("Ghi chú tiến độ / Khó khăn vướng mắc:")
+            so_tu_han = st.number_input(
+                "Số tủ đã hàn nối (so tu han noi):", min_value=0, step=1
+            )
+            so_doi = st.number_input(
+                "Số lượng đội thi công (Số đội):", min_value=1, step=1
+            )
+            ke_hoach_ngay = st.text_input(
+                "Kế hoạch ngày (Ke hoach ngay):",
+                placeholder="Ví dụ: Kéo 500m cáp KGG0101",
+            )
+
+        with col3:
+            tram_keo = st.text_input(
+                "Trạm kéo cáp (Trạm kéo):", placeholder="Mã trạm kéo..."
+            )
+            tram_han = st.text_input(
+                "Trạm hàn nối (Trạm hàn):", placeholder="Mã trạm hàn..."
+            )
+            ghi_chu = st.text_area(
+                "Ghi chú (Ghi chú):",
+                placeholder="Nhập khó khăn, vướng mắc nếu có...",
+            )
 
         btn_submit = st.form_submit_button("🚀 Gửi Báo Cáo Tiến Độ")
 
         if btn_submit:
             if not selected_tram:
-                st.warning("Vui lòng chọn Trạm thi công!")
+                st.warning("Vui lòng chọn Trạm!")
             else:
                 payload = {
                     "Ngay": str(ngay_baocao),
                     "Tram": selected_tram,
                     "Doi_Tao": user["role"],
-                    "So_Luong_Xong": int(so_luong_xong),
-                    "Ghi_Chu": ghi_chu,
+                    "Da_keo_cap": da_keo_cap,
+                    "so_tu_han_noi": so_tu_han,
+                    "Ghi_chu": ghi_chu,
+                    "Ke_hoach_ngay": ke_hoach_ngay,
+                    "So_doi": so_doi,
+                    "Ten_doi": ten_doi,
+                    "Tram_keo": tram_keo,
+                    "Tram_han": tram_han,
                 }
                 try:
                     res = requests.post(WEB_APP_URL, json=payload)
                     if res.status_code == 200:
                         st.success(
-                            "✅ Đã ghi nhận báo cáo tiến độ vào Google Sheets thành công!"
+                            "✅ Đã lưu báo cáo vào Google Sheets thành công!"
                         )
                         st.cache_data.clear()
                     else:
