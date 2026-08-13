@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import pandas as pd
 import requests
 import streamlit as st
@@ -10,9 +10,9 @@ st.set_page_config(
     layout="wide",
 )
 
-# ⚠️ Giữ nguyên đường link Web App của bạn
+# ⚠️ Nhớ kiểm tra đúng đường link Web App Apps Script của bạn
 WEB_APP_URL = (
-    "https://script.google.com/macros/s/AKfycbzpbftRy1zBbDXpeD3aliSTEpUe8kv2IxZ-e7fu1kpFLVSV0CV4tw0238VPe8Gyp2HhKg/exec"
+    "https://script.google.com/macros/s/THAY_LINK_WEB_APP_CUA_BAN_VAO_DAY/exec"
 )
 
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1VPbF7bLk6JF97kJEGw-TW1JEheUf4etfDO5bLsphyGs/edit#gid=0"
@@ -110,11 +110,11 @@ if col_tram:
         if str(t).strip() != ""
     ]
 
-# TẠO CÁC TAB CHỨC NĂNG
+# TẠO CÁC TAB CHỨC NĂNG (ĐỔI TÊN TAB THEO YÊU CẦU)
 tab1, tab2, tab3 = st.tabs([
     "📈 Bảng Điều Khiển Tiến Độ",
     "🏗️ 1. Báo Cáo Thi Công",
-    "📅 2. Báo Cáo Kế Hoạch Ngày",
+    "📅 2. Kế Hoạch Thi Công",
 ])
 
 # ==========================================
@@ -233,17 +233,20 @@ with tab2:
                     st.error(f"Lỗi gửi dữ liệu: {ex}")
 
 # ==========================================
-# TAB 3: BẢNG 2 - BÁO CÁO KẾ HOẠCH NGÀY (SỔ XUỐNG CHỌN TRẠM)
+# TAB 3: BẢNG 2 - KẾ HOẠCH THI CÔNG (MẶC ĐỊNH NGÀY N+1)
 # ==========================================
 with tab3:
-    st.subheader("📅 Báo cáo kế hoạch thi công trong ngày")
+    st.subheader("📅 Báo cáo kế hoạch thi công")
 
     with st.form("form_ke_hoach_ngay", clear_on_submit=True):
         col1, col2 = st.columns(2)
 
+        # Tính toán Ngày N+1 (mặc định là ngày mai)
+        ngay_mai = datetime.now() + timedelta(days=1)
+
         with col1:
             ngay_kh = st.date_input(
-                "Ngày kế hoạch (Ngay):", datetime.now(), key="kh_ngay"
+                "Ngày kế hoạch (Ngay):", value=ngay_mai, key="kh_ngay"
             )
             so_doi = st.number_input(
                 "Số lượng đội thi công (Số đội):",
@@ -258,7 +261,6 @@ with tab3:
             )
 
         with col2:
-            # Sổ xuống danh sách trạm thuộc đối tác thi công (Cho phép chọn 1 hoặc nhiều trạm)
             selected_tram_keo = st.multiselect(
                 "Trạm dự kiến kéo cáp (Trạm kéo):",
                 options=tram_list,
@@ -280,7 +282,6 @@ with tab3:
         btn_submit_kh = st.form_submit_button("🚀 Gửi Báo Cáo Kế Hoạch")
 
         if btn_submit_kh:
-            # Chuyển mảng các trạm đã chọn thành chuỗi phân cách bởi dấu phẩy
             str_tram_keo = ", ".join(selected_tram_keo)
             str_tram_han = ", ".join(selected_tram_han)
 
