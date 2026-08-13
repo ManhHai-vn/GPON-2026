@@ -240,7 +240,7 @@ with tab1:
             render_contractor_stats(user["role"], [user["role"]])
 
         st.markdown("### 📋 Danh sách chi tiết các trạm")
-        cols_hien_thi = [c for c in [col_tram, col_keocap, col_hannoi] if c]
+        cols_hien_thi = [c for c in [col_tram, col_km_giao, col_tu_giao, col_keocap, col_hannoi] if c]
         if cols_hien_thi:
             st.dataframe(df[cols_hien_thi], use_container_width=True, hide_index=True)
         else:
