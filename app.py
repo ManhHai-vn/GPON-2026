@@ -90,7 +90,6 @@ with tab1:
     if user["role"] == "admin":
         st.markdown("### 📊 Tổng quan tiến độ thi công - Hai Nhà Thầu (VCC & Xuân Long)")
         
-        # Xuất file CSV tổng hợp cả 2 nhà thầu (tương thích mọi môi trường)
         csv_data = df_raw.to_csv(index=False).encode('utf-8-sig')
         st.download_button(
             label="📥 Tải Xuống File Tổng Hợp (CSV)",
@@ -100,13 +99,16 @@ with tab1:
         )
         st.markdown("---")
 
-        # Chia 2 cột cho 2 nhà thầu: VCC và Xuân Long
         col_vcc, col_xl = st.columns(2)
 
-        def render_contractor_stats(contractor_name, keyword):
+        def render_contractor_stats(contractor_name, keywords):
             st.markdown(f"#### 🏢 Nhà thầu: {contractor_name}")
             if col_doitac:
-                df_sub = df_raw[df_raw[col_doitac].str.contains(keyword, case=False, na=False)].copy()
+                # Kiểm tra nhiều từ khóa để bắt chính xác tên nhà thầu
+                mask = False
+                for kw in keywords:
+                    mask = mask | df_raw[col_doitac].str.contains(kw, case=False, na=False)
+                df_sub = df_raw[mask].copy()
             else:
                 df_sub = pd.DataFrame()
 
@@ -116,7 +118,7 @@ with tab1:
                 if col_keocap:
                     df_sub[col_keocap] = pd.to_numeric(df_sub[col_keocap], errors='coerce').fillna(0)
                     tram_tc = len(df_sub[df_sub[col_keocap] > 0])
-                    tong_km = df_sub[col_keocap].sum() / 1000.0  # Quy đổi mét sang km
+                    tong_km = df_sub[col_keocap].sum() / 1000.0  
                 else:
                     tram_tc = 0
                     tong_km = 0.0
@@ -136,10 +138,10 @@ with tab1:
                 st.info(f"Chưa có dữ liệu cho {contractor_name}")
 
         with col_vcc:
-            render_contractor_stats("VCC", "vcc")
+            render_contractor_stats("VCC", ["vcc"])
 
         with col_xl:
-            render_contractor_stats("Xuân Long", "xuan long")
+            render_contractor_stats("Xuân Long", ["xuân", "xuan", "long"])
 
         st.markdown("---")
         st.markdown("### 📋 Danh sách chi tiết toàn bộ trạm")
