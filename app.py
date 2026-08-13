@@ -101,6 +101,15 @@ else:
     else:
         df = df_raw.copy()
 
+# TẠO DANH SÁCH TRẠM DÙNG CHO SỔ XUỐNG (DROPDOWN)
+tram_list = []
+if col_tram:
+    tram_list = [
+        str(t).strip()
+        for t in df[col_tram].dropna().unique().tolist()
+        if str(t).strip() != ""
+    ]
+
 # TẠO CÁC TAB CHỨC NĂNG
 tab1, tab2, tab3 = st.tabs([
     "📈 Bảng Điều Khiển Tiến Độ",
@@ -168,18 +177,9 @@ with tab2:
             ngay_baocao = st.date_input(
                 "Ngày thực hiện (Ngay):", datetime.now(), key="tc_ngay"
             )
-
-            tram_options = []
-            if col_tram:
-                tram_options = [
-                    str(t)
-                    for t in df[col_tram].dropna().unique().tolist()
-                    if str(t).strip() != ""
-                ]
-
             selected_tram = st.selectbox(
                 "Chọn Trạm thi công (Tram):",
-                options=tram_options,
+                options=tram_list,
                 key="tc_tram",
             )
             doi_tao = st.text_input(
@@ -233,7 +233,7 @@ with tab2:
                     st.error(f"Lỗi gửi dữ liệu: {ex}")
 
 # ==========================================
-# TAB 3: BẢNG 2 - BÁO CÁO KẾ HOẠCH NGÀY
+# TAB 3: BẢNG 2 - BÁO CÁO KẾ HOẠCH NGÀY (SỔ XUỐNG CHỌN TRẠM)
 # ==========================================
 with tab3:
     st.subheader("📅 Báo cáo kế hoạch thi công trong ngày")
@@ -258,33 +258,40 @@ with tab3:
             )
 
         with col2:
-            tram_keo = st.text_input(
+            # Sổ xuống danh sách trạm thuộc đối tác thi công (Cho phép chọn 1 hoặc nhiều trạm)
+            selected_tram_keo = st.multiselect(
                 "Trạm dự kiến kéo cáp (Trạm kéo):",
-                placeholder="Ví dụ: KGG0101, KGG0224",
+                options=tram_list,
+                placeholder="Chọn trạm kéo cáp...",
                 key="kh_tramkeo",
             )
-            tram_han = st.text_input(
+            selected_tram_han = st.multiselect(
                 "Trạm dự kiến hàn nối (Trạm hàn):",
-                placeholder="Ví dụ: KGG0390",
+                options=tram_list,
+                placeholder="Chọn trạm hàn nối...",
                 key="kh_tramhan",
             )
             ke_hoach_ngay = st.text_area(
                 "Nội dung kế hoạch chi tiết (Ke hoach ngay):",
-                placeholder="Ví dụ: Đội 1 triển khai kéo 300m cáp trạm KGG0101...",
+                placeholder="Ví dụ: Đội 1 triển khai kéo 300m cáp...",
                 key="kh_noidung",
             )
 
         btn_submit_kh = st.form_submit_button("🚀 Gửi Báo Cáo Kế Hoạch")
 
         if btn_submit_kh:
+            # Chuyển mảng các trạm đã chọn thành chuỗi phân cách bởi dấu phẩy
+            str_tram_keo = ", ".join(selected_tram_keo)
+            str_tram_han = ", ".join(selected_tram_han)
+
             payload = {
                 "action": "ke_hoach_ngay",
                 "Ngay": str(ngay_kh),
                 "Doi_Tao": user["role"],
                 "So_doi": so_doi,
                 "Ten_doi": ten_doi,
-                "Tram_keo": tram_keo,
-                "Tram_han": tram_han,
+                "Tram_keo": str_tram_keo,
+                "Tram_han": str_tram_han,
                 "Ke_hoach_ngay": ke_hoach_ngay,
             }
             try:
