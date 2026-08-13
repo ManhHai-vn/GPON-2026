@@ -12,7 +12,7 @@ st.set_page_config(
 
 # ⚠️ Nhớ kiểm tra đúng đường link Web App Apps Script của bạn
 WEB_APP_URL = (
-    "https://script.google.com/macros/s/THAY_LINK_WEB_APP_CUA_BAN_VAO_DAY/exec"
+    "https://script.google.com/macros/s/AKfycbwaTaqtylnHfBkgC0jJDiU8n1tVVTmILtC9sjdNebIGVBBat7Yji-0WRF1HvSwJTpl4iQ/exec"
 )
 
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1VPbF7bLk6JF97kJEGw-TW1JEheUf4etfDO5bLsphyGs/edit#gid=0"
