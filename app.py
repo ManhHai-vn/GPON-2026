@@ -91,6 +91,44 @@ tram_list = [str(t).strip() for t in df[col_tram].dropna().unique().tolist() if 
 tab1, tab2, tab3 = st.tabs(["📈 Thống Kê Tiến Độ", "🏗️ 1. Báo Cáo Thi Công", "📅 2. Kế Hoạch Thi Công"])
 
 with tab1:
+    def render_contractor_stats(contractor_name, keywords):
+        st.markdown(f"#### 🏢 Nhà thầu: {contractor_name}")
+        if col_doitac:
+            mask = False
+            for kw in keywords:
+                mask = mask | df_raw[col_doitac].str.contains(kw, case=False, na=False)
+            df_sub = df_raw[mask].copy()
+        else:
+            df_sub = pd.DataFrame()
+
+        if len(df_sub) > 0:
+            tram_giao = len(df_sub)
+            
+            if col_keocap:
+                df_sub[col_keocap] = pd.to_numeric(df_sub[col_keocap], errors='coerce').fillna(0)
+                tram_tc = len(df_sub[df_sub[col_keocap] > 0])
+                tong_km = df_sub[col_keocap].sum() / 1000.0  
+            else:
+                tram_tc = 0
+                tong_km = 0.0
+
+            if col_hannoi:
+                df_sub[col_hannoi] = pd.to_numeric(df_sub[col_hannoi], errors='coerce').fillna(0)
+                tram_han = len(df_sub[df_sub[col_hannoi] > 0])
+                tong_tu_han = df_sub[col_hannoi].sum()
+            else:
+                tram_han = 0
+                tong_tu_han = 0
+
+            with st.container(border=True):
+                st.metric("Trạm được giao", tram_giao)
+                st.metric("Trạm đã thi công", tram_tc)
+                st.metric("Trạm đã hàn", tram_han)
+                st.metric("Tổng số tủ đã hàn", f"{tong_tu_han:,.0f}")
+                st.metric("Tổng số km đã kéo", f"{tong_km:,.2f} km")
+        else:
+            st.info(f"Chưa có dữ liệu cho {contractor_name}")
+
     if user["role"] == "admin":
         st.markdown("### 📊 Tổng quan tiến độ thi công - Hai Nhà Thầu (VCC & Xuân Long)")
         
@@ -145,7 +183,6 @@ with tab1:
         )
         st.markdown("---")
 
-        # --- BẢNG TỔNG HỢP SỐ LIỆU ĐƯỢC GIAO (KM TRIỂN KHAI & TỦ HÀN NỐI) ---
         st.markdown("#### 📋 Bảng tổng hợp số liệu được giao theo nhà thầu")
         
         def get_contractor_summary_row(contractor_name, keywords):
@@ -158,7 +195,7 @@ with tab1:
                 df_sub = pd.DataFrame()
             
             val_km = pd.to_numeric(df_sub[col_km_giao], errors='coerce').sum() if col_km_giao else 0.0
-            km_trien_khai = val_km / 1000.0 if val_km > 100 else val_km # Quy đổi sang km nếu đơn vị là mét
+            km_trien_khai = val_km / 1000.0 if val_km > 100 else val_km 
             so_tu = pd.to_numeric(df_sub[col_tu_giao], errors='coerce').sum() if col_tu_giao else 0
             
             return {
@@ -182,47 +219,10 @@ with tab1:
         st.dataframe(df_summary_table, use_container_width=True, hide_index=True)
         st.markdown("---")
 
-        col_vcc, col_xl = st.columns(2)
-
-        def render_contractor_stats(contractor_name, keywords):
-            st.markdown(f"#### 🏢 Nhà thầu: {contractor_name}")
-            if col_doitac:
-                mask = False
-                for kw in keywords:
-                    mask = mask | df_raw[col_doitac].str.contains(kw, case=False, na=False)
-                df_sub = df_raw[mask].copy()
-            else:
-                df_sub = pd.DataFrame()
-
-            if len(df_sub) > 0:
-                tram_giao = len(df_sub)
-                
-                if col_keocap:
-                    df_sub[col_keocap] = pd.to_numeric(df_sub[col_keocap], errors='coerce').fillna(0)
-                    tram_tc = len(df_sub[df_sub[col_keocap] > 0])
-                    tong_km = df_sub[col_keocap].sum() / 1000.0  
-                else:
-                    tram_tc = 0
-                    tong_km = 0.0
-
-                if col_hannoi:
-                    df_sub[col_hannoi] = pd.to_numeric(df_sub[col_hannoi], errors='coerce').fillna(0)
-                    tram_han = len(df_sub[df_sub[col_hannoi] > 0])
-                else:
-                    tram_han = 0
-
-                with st.container(border=True):
-                    st.metric("Trạm được giao", tram_giao)
-                    st.metric("Trạm đã thi công", tram_tc)
-                    st.metric("Trạm đã hàn", tram_han)
-                    st.metric("Tổng số km đã kéo", f"{tong_km:,.2f} km")
-            else:
-                st.info(f"Chưa có dữ liệu cho {contractor_name}")
-
-        with col_vcc:
+        col_vcc_box, col_xl_box = st.columns(2)
+        with col_vcc_box:
             render_contractor_stats("VCC", ["vcc"])
-
-        with col_xl:
+        with col_xl_box:
             render_contractor_stats("Xuân Long", ["xuân", "xuan", "long"])
 
         st.markdown("---")
@@ -231,26 +231,13 @@ with tab1:
 
     else:
         st.markdown(f"### 📊 Tổng quan tiến độ ({user['role']})")
-        with st.container(border=True):
-            m1, m2, m3 = st.columns(3)
-            m1.metric("Số trạm quản lý", len(df))
-            if col_hodan:
-                m2.metric("Tổng số hộ dân", f"{pd.to_numeric(df[col_hodan], errors='coerce').sum():,.0f}")
-            if col_cong:
-                m3.metric("Tổng số cổng", f"{pd.to_numeric(df[col_cong], errors='coerce').sum():,.0f}")
-
-        if len(df) > 0:
-            st.markdown("### 📑 Tổng hợp khối lượng thi công")
-            total_tram = len(df)
-            total_keo = pd.to_numeric(df[col_keocap], errors='coerce').sum() if col_keocap else 0
-            total_han = pd.to_numeric(df[col_hannoi], errors='coerce').sum() if col_hannoi else 0
-            
-            df_summary = pd.DataFrame([{
-                "Tổng số trạm được giao": total_tram,
-                "Tổng thi công kéo cáp (mét)": f"{total_keo:,.1f}",
-                "Tổng hàn nối": f"{total_han:,.0f}"
-            }])
-            st.dataframe(df_summary, use_container_width=True, hide_index=True)
+        role_lower = user["role"].lower()
+        if "vcc" in role_lower:
+            render_contractor_stats("VCC", ["vcc"])
+        elif "xuân" in role_lower or "xuan" in role_lower:
+            render_contractor_stats("Xuân Long", ["xuân", "xuan", "long"])
+        else:
+            render_contractor_stats(user["role"], [user["role"]])
 
         st.markdown("### 📋 Danh sách chi tiết các trạm")
         cols_hien_thi = [c for c in [col_tram, col_keocap, col_hannoi] if c]
