@@ -101,11 +101,16 @@ else:
     else:
         df = df_raw.copy()
 
-tab1, tab2 = st.tabs(
-    ["📈 Bảng Điều Khiển Tiến Độ", "📝 Đối Tác Nhập Báo Cáo"]
-)
+# TẠO CÁC TAB CHỨC NĂNG
+tab1, tab2, tab3 = st.tabs([
+    "📈 Bảng Điều Khiển Tiến Độ",
+    "🏗️ 1. Báo Cáo Thi Công",
+    "📅 2. Báo Cáo Kế Hoạch Ngày",
+])
 
+# ==========================================
 # TAB 1: TIẾN ĐỘ TỔNG QUAN
+# ==========================================
 with tab1:
     st.subheader(
         f"📌 Tổng quan dữ liệu ({'Toàn bộ' if user['role']=='admin' else user['role']})"
@@ -150,15 +155,19 @@ with tab1:
     st.subheader("📋 Danh sách các trạm thi công")
     st.dataframe(df_filtered, use_container_width=True)
 
-# TAB 2: FORM NHẬP BÁO CÁO MỚI (ĐẦY ĐỦ CÁC TRƯỜNG)
+# ==========================================
+# TAB 2: BẢNG 1 - BÁO CÁO THI CÔNG
+# ==========================================
 with tab2:
-    st.subheader("📝 Báo cáo sản lượng & kế hoạch thi công hàng ngày")
+    st.subheader("🏗️ Báo cáo sản lượng thi công thực tế")
 
-    with st.form("form_bao_cao", clear_on_submit=True):
-        col1, col2, col3 = st.columns(3)
+    with st.form("form_bao_cao_thi_cong", clear_on_submit=True):
+        col1, col2 = st.columns(2)
 
         with col1:
-            ngay_baocao = st.date_input("Ngày thực hiện (Ngay):", datetime.now())
+            ngay_baocao = st.date_input(
+                "Ngày thực hiện (Ngay):", datetime.now(), key="tc_ngay"
+            )
 
             tram_options = []
             if col_tram:
@@ -169,13 +178,12 @@ with tab2:
                 ]
 
             selected_tram = st.selectbox(
-                "Chọn Trạm (Tram):", options=tram_options
+                "Chọn Trạm thi công (Tram):",
+                options=tram_options,
+                key="tc_tram",
             )
             doi_tao = st.text_input(
                 "Đơn vị (Doi_Tao):", value=user["name"], disabled=True
-            )
-            ten_doi = st.text_input(
-                "Tên đội thi công (Tên đội):", placeholder="Ví dụ: Đội 1"
             )
 
         with col2:
@@ -183,59 +191,110 @@ with tab2:
                 "Khối lượng đã kéo cáp - mét (Da keo cap):",
                 min_value=0,
                 step=10,
+                key="tc_keo",
             )
             so_tu_han = st.number_input(
-                "Số tủ đã hàn nối (so tu han noi):", min_value=0, step=1
-            )
-            so_doi = st.number_input(
-                "Số lượng đội thi công (Số đội):", min_value=1, step=1
-            )
-            ke_hoach_ngay = st.text_input(
-                "Kế hoạch ngày (Ke hoach ngay):",
-                placeholder="Ví dụ: Kéo 500m cáp KGG0101",
-            )
-
-        with col3:
-            tram_keo = st.text_input(
-                "Trạm kéo cáp (Trạm kéo):", placeholder="Mã trạm kéo..."
-            )
-            tram_han = st.text_input(
-                "Trạm hàn nối (Trạm hàn):", placeholder="Mã trạm hàn..."
+                "Số tủ đã hàn nối (so tu han noi):",
+                min_value=0,
+                step=1,
+                key="tc_han",
             )
             ghi_chu = st.text_area(
                 "Ghi chú (Ghi chú):",
-                placeholder="Nhập khó khăn, vướng mắc nếu có...",
+                placeholder="Nhập vướng mắc, khó khăn nếu có...",
+                key="tc_ghichu",
             )
 
-        btn_submit = st.form_submit_button("🚀 Gửi Báo Cáo Tiến Độ")
+        btn_submit_tc = st.form_submit_button("🚀 Gửi Báo Cáo Thi Công")
 
-        if btn_submit:
+        if btn_submit_tc:
             if not selected_tram:
-                st.warning("Vui lòng chọn Trạm!")
+                st.warning("Vui lòng chọn Trạm thi công!")
             else:
                 payload = {
+                    "action": "bao_cao_thi_cong",
                     "Ngay": str(ngay_baocao),
                     "Tram": selected_tram,
                     "Doi_Tao": user["role"],
                     "Da_keo_cap": da_keo_cap,
                     "so_tu_han_noi": so_tu_han,
                     "Ghi_chu": ghi_chu,
-                    "Ke_hoach_ngay": ke_hoach_ngay,
-                    "So_doi": so_doi,
-                    "Ten_doi": ten_doi,
-                    "Tram_keo": tram_keo,
-                    "Tram_han": tram_han,
                 }
                 try:
                     res = requests.post(WEB_APP_URL, json=payload)
                     if res.status_code == 200:
                         st.success(
-                            "✅ Đã lưu báo cáo vào Google Sheets thành công!"
+                            "✅ Đã lưu Báo cáo Thi công vào Google Sheets (tab Baocao_Tiendo) thành công!"
                         )
                         st.cache_data.clear()
                     else:
-                        st.error(
-                            f"Lỗi kết nối Web App Google Sheets (Mã lỗi: {res.status_code})"
-                        )
+                        st.error(f"Lỗi kết nối Web App: {res.status_code}")
                 except Exception as ex:
                     st.error(f"Lỗi gửi dữ liệu: {ex}")
+
+# ==========================================
+# TAB 3: BẢNG 2 - BÁO CÁO KẾ HOẠCH NGÀY
+# ==========================================
+with tab3:
+    st.subheader("📅 Báo cáo kế hoạch thi công trong ngày")
+
+    with st.form("form_ke_hoach_ngay", clear_on_submit=True):
+        col1, col2 = st.columns(2)
+
+        with col1:
+            ngay_kh = st.date_input(
+                "Ngày kế hoạch (Ngay):", datetime.now(), key="kh_ngay"
+            )
+            so_doi = st.number_input(
+                "Số lượng đội thi công (Số đội):",
+                min_value=1,
+                step=1,
+                key="kh_sodoi",
+            )
+            ten_doi = st.text_input(
+                "Tên đội thi công (Tên đội):",
+                placeholder="Ví dụ: Đội 1 - Xuân Long",
+                key="kh_tendoi",
+            )
+
+        with col2:
+            tram_keo = st.text_input(
+                "Trạm dự kiến kéo cáp (Trạm kéo):",
+                placeholder="Ví dụ: KGG0101, KGG0224",
+                key="kh_tramkeo",
+            )
+            tram_han = st.text_input(
+                "Trạm dự kiến hàn nối (Trạm hàn):",
+                placeholder="Ví dụ: KGG0390",
+                key="kh_tramhan",
+            )
+            ke_hoach_ngay = st.text_area(
+                "Nội dung kế hoạch chi tiết (Ke hoach ngay):",
+                placeholder="Ví dụ: Đội 1 triển khai kéo 300m cáp trạm KGG0101...",
+                key="kh_noidung",
+            )
+
+        btn_submit_kh = st.form_submit_button("🚀 Gửi Báo Cáo Kế Hoạch")
+
+        if btn_submit_kh:
+            payload = {
+                "action": "ke_hoach_ngay",
+                "Ngay": str(ngay_kh),
+                "Doi_Tao": user["role"],
+                "So_doi": so_doi,
+                "Ten_doi": ten_doi,
+                "Tram_keo": tram_keo,
+                "Tram_han": tram_han,
+                "Ke_hoach_ngay": ke_hoach_ngay,
+            }
+            try:
+                res = requests.post(WEB_APP_URL, json=payload)
+                if res.status_code == 200:
+                    st.success(
+                        "✅ Đã lưu Kế hoạch ngày vào Google Sheets (tab Kehoach_Ngay) thành công!"
+                    )
+                    st.cache_data.clear()
+                else:
+                    st.error(f"Lỗi kết nối Web App: {res.status_code}")
+            except Exception as ex:
+                st.error(f"Lỗi gửi dữ liệu: {ex}")
