@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import io
 import pandas as pd
 import requests
 import streamlit as st
@@ -87,53 +88,99 @@ tram_list = [str(t).strip() for t in df[col_tram].dropna().unique().tolist() if 
 tab1, tab2, tab3 = st.tabs(["📈 Thống Kê Tiến Độ", "🏗️ 1. Báo Cáo Thi Công", "📅 2. Kế Hoạch Thi Công"])
 
 with tab1:
-    st.markdown("### 🔍 Bộ lọc thông tin")
-    col_f1, col_f2 = st.columns(2)
-    with col_f1:
-        dia_ban_list = df[col_diachi].dropna().unique().tolist() if col_diachi else []
-        selected_diaban = st.multiselect("Lọc theo Địa chỉ:", options=dia_ban_list, label_visibility="collapsed")
-    with col_f2:
-        doitac_list = df[col_doitac].dropna().unique().tolist() if col_doitac else []
-        selected_doitac = st.multiselect("Lọc theo Đối tác:", options=doitac_list, disabled=(user["role"] != "admin"), label_visibility="collapsed")
-
-    df_filtered = df.copy()
-    if selected_diaban and col_diachi:
-        df_filtered = df_filtered[df_filtered[col_diachi].isin(selected_diaban)]
-    if selected_doitac and col_doitac and user["role"] == "admin":
-        df_filtered = df_filtered[df_filtered[col_doitac].isin(selected_doitac)]
-
-    st.markdown("---")
-    st.markdown(f"### 📊 Tổng quan tiến độ ({user['role']})")
-    with st.container(border=True):
-        m1, m2, m3 = st.columns(3)
-        m1.metric("Số trạm quản lý", len(df_filtered))
-        if col_hodan:
-            m2.metric("Tổng số hộ dân", f"{pd.to_numeric(df_filtered[col_hodan], errors='coerce').sum():,.0f}")
-        if col_cong:
-            m3.metric("Tổng số cổng", f"{pd.to_numeric(df_filtered[col_cong], errors='coerce').sum():,.0f}")
-
-    # --- BẢNG TỔNG HỢP SỐ LIỆU THI CÔNG (KHÔNG CÓ CỘT ĐỐI TÁC) ---
-    if len(df_filtered) > 0:
-        st.markdown("### 📑 Tổng hợp khối lượng thi công")
-        total_tram = len(df_filtered)
-        total_keo = pd.to_numeric(df_filtered[col_keocap], errors='coerce').sum() if col_keocap else 0
-        total_han = pd.to_numeric(df_filtered[col_hannoi], errors='coerce').sum() if col_hannoi else 0
+    if user["role"] == "admin":
+        st.markdown("### 📊 Tổng quan tiến độ thi công - Hai Nhà Thầu (VCC & Xuân Long)")
         
-        df_summary = pd.DataFrame([{
-            "Tổng số trạm được giao": total_tram,
-            "Tổng thi công kéo cáp": f"{total_keo:,.1f}",
-            "Tổng hàn nối": f"{total_han:,.0f}"
-        }])
-        st.dataframe(df_summary, use_container_width=True, hide_index=True)
+        # Nút xuất Excel tổng hợp cả 2 nhà thầu
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df_raw.to_excel(writer, index=False, sheet_name='TongHop_GPON')
+        excel_data = output.getvalue()
+        
+        st.download_button(
+            label="📥 Xuất File Excel Tổng Hợp (Toàn hệ thống)",
+            data=excel_data,
+            file_name=f"TongHop_TienDo_GPON_{datetime.now().strftime('%Y%m%d')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        st.markdown("---")
 
-    # --- DANH SÁCH CHI TIẾT GỒM TÊN TRẠM, KÉO CÁP, HÀN NỐI ---
-    st.markdown("### 📋 Danh sách chi tiết các trạm")
-    cols_hien_thi = [c for c in [col_tram, col_keocap, col_hannoi] if c]
-    if cols_hien_thi:
-        df_hien_thi = df_filtered[cols_hien_thi].copy()
-        st.dataframe(df_hien_thi, use_container_width=True, hide_index=True)
+        # Chia 2 cột cho 2 nhà thầu: VCC và Xuân Long
+        col_vcc, col_xl = st.columns(2)
+
+        def render_contractor_stats(contractor_name, keyword):
+            st.markdown(f"#### 🏢 Nhà thầu: {contractor_name}")
+            if col_doitac:
+                df_sub = df_raw[df_raw[col_doitac].str.contains(keyword, case=False, na=False)].copy()
+            else:
+                df_sub = pd.DataFrame()
+
+            if len(df_sub) > 0:
+                tram_giao = len(df_sub)
+                
+                # Tính trạm đã thi công (kéo cáp > 0) và trạm đã hàn (hàn nối > 0)
+                if col_keocap:
+                    df_sub[col_keocap] = pd.to_numeric(df_sub[col_keocap], errors='coerce').fillna(0)
+                    tram_tc = len(df_sub[df_sub[col_keocap] > 0])
+                    tong_km = df_sub[col_keocap].sum() / 1000.0  # Quy đổi mét sang km
+                else:
+                    tram_tc = 0
+                    tong_km = 0.0
+
+                if col_hannoi:
+                    df_sub[col_hannoi] = pd.to_numeric(df_sub[col_hannoi], errors='coerce').fillna(0)
+                    tram_han = len(df_sub[df_sub[col_hannoi] > 0])
+                else:
+                    tram_han = 0
+
+                with st.container(border=True):
+                    st.metric("Trạm được giao", tram_giao)
+                    st.metric("Trạm đã thi công (kéo cáp)", tram_tc)
+                    st.metric("Trạm đã hàn nối", tram_han)
+                    st.metric("Tổng số km đã kéo", f"{tong_km:,.2f} km")
+            else:
+                st.info(f"Chưa có dữ liệu cho {contractor_name}")
+
+        with col_vcc:
+            render_contractor_stats("VCC", "vcc")
+
+        with col_xl:
+            render_contractor_stats("Xuân Long", "xuan long")
+
+        st.markdown("---")
+        st.markdown("### 📋 Danh sách chi tiết toàn bộ trạm")
+        st.dataframe(df_raw, use_container_width=True, hide_index=True)
+
     else:
-        st.dataframe(df_filtered, use_container_width=True, hide_index=True)
+        # Giao diện dành riêng cho đối tác thông thường (như cũ)
+        st.markdown(f"### 📊 Tổng quan tiến độ ({user['role']})")
+        with st.container(border=True):
+            m1, m2, m3 = st.columns(3)
+            m1.metric("Số trạm quản lý", len(df))
+            if col_hodan:
+                m2.metric("Tổng số hộ dân", f"{pd.to_numeric(df[col_hodan], errors='coerce').sum():,.0f}")
+            if col_cong:
+                m3.metric("Tổng số cổng", f"{pd.to_numeric(df[col_cong], errors='coerce').sum():,.0f}")
+
+        if len(df) > 0:
+            st.markdown("### 📑 Tổng hợp khối lượng thi công")
+            total_tram = len(df)
+            total_keo = pd.to_numeric(df[col_keocap], errors='coerce').sum() if col_keocap else 0
+            total_han = pd.to_numeric(df[col_hannoi], errors='coerce').sum() if col_hannoi else 0
+            
+            df_summary = pd.DataFrame([{
+                "Tổng số trạm được giao": total_tram,
+                "Tổng thi công kéo cáp (mét)": f"{total_keo:,.1f}",
+                "Tổng hàn nối": f"{total_han:,.0f}"
+            }])
+            st.dataframe(df_summary, use_container_width=True, hide_index=True)
+
+        st.markdown("### 📋 Danh sách chi tiết các trạm")
+        cols_hien_thi = [c for c in [col_tram, col_keocap, col_hannoi] if c]
+        if cols_hien_thi:
+            st.dataframe(df[cols_hien_thi], use_container_width=True, hide_index=True)
+        else:
+            st.dataframe(df, use_container_width=True, hide_index=True)
 
 with tab2:
     st.subheader("🏗️ Báo cáo sản lượng thi công thực tế")
