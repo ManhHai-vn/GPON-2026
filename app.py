@@ -87,6 +87,7 @@ cols_cap_giao = get_cols_by_keywords(df_raw, ["12fo", "24fo"])
 col_tu_giao = get_col(df_raw, ["tủ", "tu"])
 
 col_keocap = get_col(df_raw, ["kéo cáp", "keo cap"])
+col_laptu = get_col(df_raw, ["lắp tủ", "lap tu"])
 col_hannoi = get_col(df_raw, ["hàn nối", "han noi"])
 
 if user["role"] == "admin":
@@ -131,6 +132,12 @@ with tab1:
                 tram_tc = 0
                 tong_km = 0.0
 
+            if col_laptu:
+                df_sub[col_laptu] = pd.to_numeric(df_sub[col_laptu], errors='coerce').fillna(0)
+                tong_so_tu_lap = df_sub[col_laptu].sum()
+            else:
+                tong_so_tu_lap = 0
+
             if col_hannoi:
                 df_sub[col_hannoi] = pd.to_numeric(df_sub[col_hannoi], errors='coerce').fillna(0)
                 tram_han = len(df_sub[df_sub[col_hannoi] > 0])
@@ -143,6 +150,7 @@ with tab1:
                 st.metric("Trạm được giao", tram_giao)
                 st.metric("Trạm đã thi công", tram_tc)
                 st.metric("Trạm đã hàn", tram_han)
+                st.metric("Tổng số tủ đã lắp", f"{tong_so_tu_lap:,.0f}")
                 st.metric("Tổng số tủ đã hàn", f"{tong_tu_han:,.0f}")
                 st.metric("Tổng số km đã kéo", f"{tong_km:,.2f} km")
         else:
@@ -160,30 +168,35 @@ with tab1:
                 else:
                     df_sub = pd.DataFrame()
                 
-                export_rows.append({"Tên Trạm": f"=== NHÀ THẦU: {contractor_title.upper()} ===", "Kéo cáp (mét)": "", "Hàn nối": ""})
+                export_rows.append({"Tên Trạm": f"=== NHÀ THẦU: {contractor_title.upper()} ===", "Kéo cáp (mét)": "", "Lắp tủ": "", "Hàn nối": ""})
                 total_keo_val = 0
+                total_lap_val = 0
                 total_han_val = 0
                 
                 for _, row in df_sub.iterrows():
                     t_name = row[col_tram] if col_tram else ""
                     k_val = pd.to_numeric(row[col_keocap], errors='coerce') if col_keocap else 0
+                    l_val = pd.to_numeric(row[col_laptu], errors='coerce') if col_laptu else 0
                     h_val = pd.to_numeric(row[col_hannoi], errors='coerce') if col_hannoi else 0
                     
                     if pd.notna(k_val): total_keo_val += k_val
+                    if pd.notna(l_val): total_lap_val += l_val
                     if pd.notna(h_val): total_han_val += h_val
                     
                     export_rows.append({
                         "Tên Trạm": t_name,
                         "Kéo cáp (mét)": k_val if pd.notna(k_val) else 0,
+                        "Lắp tủ": l_val if pd.notna(l_val) else 0,
                         "Hàn nối": h_val if pd.notna(h_val) else 0
                     })
                 
                 export_rows.append({
                     "Tên Trạm": f"SUM ({contractor_title})",
                     "Kéo cáp (mét)": total_keo_val,
+                    "Lắp tủ": total_lap_val,
                     "Hàn nối": total_han_val
                 })
-                export_rows.append({"Tên Trạm": "", "Kéo cáp (mét)": "", "Hàn nối": ""})
+                export_rows.append({"Tên Trạm": "", "Kéo cáp (mét)": "", "Lắp tủ": "", "Hàn nối": ""})
 
             process_contractor_export("VCC", ["vcc"])
             process_contractor_export("Xuân Long", ["xuân", "xuan", "long"])
@@ -268,7 +281,7 @@ with tab1:
             mime="text/csv",
         )
         
-        base_cols = [col_tram] + cols_cap_giao + [col_tu_giao, col_keocap, col_hannoi]
+        base_cols = [col_tram] + cols_cap_giao + [col_tu_giao, col_keocap, col_laptu, col_hannoi]
         cols_hien_thi = [c for c in base_cols if c]
         cols_hien_thi = list(dict.fromkeys(cols_hien_thi))
         
@@ -287,12 +300,22 @@ with tab2:
             doi_tao = st.text_input("Đơn vị:", value=user["name"], disabled=True)
         with col2:
             da_keo_cap = st.number_input("Khối lượng kéo cáp (mét):", min_value=0, step=10)
+            so_tu_lap = st.number_input("Số tủ đã lắp đặt:", min_value=0, step=1)
             so_tu_han = st.number_input("Số tủ hàn nối:", min_value=0, step=1)
             ghi_chu = st.text_area("Ghi chú:")
         if st.form_submit_button("🚀 Gửi Báo Cáo"):
-            payload = {"action": "bao_cao_thi_cong", "Ngay": str(ngay_baocao), "Tram": selected_tram, "Doi_Tao": user["role"], "Da_keo_cap": da_keo_cap, "so_tu_han_noi": so_tu_han, "Ghi_chu": ghi_chu}
+            payload = {
+                "action": "bao_cao_thi_cong", 
+                "Ngay": str(ngay_baocao), 
+                "Tram": selected_tram, 
+                "Doi_Tao": user["role"], 
+                "Da_keo_cap": da_keo_cap, 
+                "So_tu_lap": so_tu_lap, 
+                "so_tu_han_noi": so_tu_han, 
+                "Ghi_chu": ghi_chu
+            }
             requests.post(WEB_APP_URL, json=payload)
-            st.success("Đã gửi!")
+            st.success("Đã gửi báo cáo thành công!")
             st.cache_data.clear()
 
 with tab3:
