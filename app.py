@@ -50,7 +50,9 @@ st.title("📊 HỆ THỐNG QUẢN LÝ & BÁO CÁO TIẾN ĐỘ GPON 2026")
 
 @st.cache_data(ttl=10)
 def load_data():
-    csv_url = SHEET_URL.split("/edit")[0] + "/export?format=csv&gid=0"
+    # Sử dụng Google Visualization API để đọc dữ liệu chuẩn xác và né hoàn toàn lỗi 403
+    sheet_id = SHEET_URL.split("/d/")[1].split("/")[0]
+    csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&gid=0"
     df_main = pd.read_csv(csv_url)
     df_main.columns = [str(c).strip() for c in df_main.columns]
     return df_main
