@@ -2,7 +2,6 @@ from datetime import datetime, timedelta
 import pandas as pd
 import requests
 import streamlit as st
-from streamlit_gsheets import GSheetsConnection
 
 st.set_page_config(
     page_title="Quản Lý & Báo Cáo Tiến Độ GPON 2026",
@@ -48,11 +47,11 @@ if st.sidebar.button("🚪 Đăng xuất"):
     st.rerun()
 
 st.title("📊 HỆ THỐNG QUẢN LÝ & BÁO CÁO TIẾN ĐỘ GPON 2026")
-conn = st.connection("gsheets", type=GSheetsConnection)
 
 @st.cache_data(ttl=10)
 def load_data():
-    df_main = conn.read(spreadsheet=SHEET_URL, worksheet="0")
+    csv_url = SHEET_URL.split("/edit")[0] + "/export?format=csv&gid=0"
+    df_main = pd.read_csv(csv_url)
     df_main.columns = [str(c).strip() for c in df_main.columns]
     return df_main
 
@@ -99,7 +98,6 @@ tram_list = [str(t).strip() for t in df[col_tram].dropna().unique().tolist() if 
 tab1, tab2, tab3 = st.tabs(["📈 Thống Kê Tiến Độ", "🏗️ 1. Báo Cáo Thi Công", "📅 2. Kế Hoạch Thi Công"])
 
 with tab1:
-    # Thêm nút làm mới dữ liệu
     col_title, col_btn = st.columns([4, 1])
     with col_title:
         if user["role"] == "admin":
