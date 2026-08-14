@@ -111,16 +111,16 @@ with tab1:
             st.cache_data.clear()
             st.rerun()
 
-    # --- TÍNH NĂNG MỚI: TẠO BÁO CÁO ZALO ---
+    # --- TÍNH NĂNG TẠO BÁO CÁO ZALO CHUẨN XÁC ---
     with st.expander("📱 Tạo nhanh nội dung báo cáo Zalo", expanded=True):
         col_z1, col_z2 = st.columns([2, 1])
         with col_z1:
             ngay_bao_cao_zalo = st.date_input("Chọn ngày báo cáo:", datetime.now(), key="date_zalo")
-            noi_dung_ke_hoach_ngay_mai = st.text_input("Nội dung kế hoạch tiếp theo (VD: tiếp tục thi công trạm...):", value="tiếp tục triển khai các trạm chưa hoàn thành.")
+            noi_dung_ke_hoach_ngay_mai = st.text_input("Nội dung kế hoạch tiếp theo:", value="tiếp tục triển khai các trạm chưa hoàn thành.")
         with col_z2:
             st.write("")
             st.write("")
-            tao_bao_cao_btn = st.button("✨ Tạo văn bản báo cáo", use_container_width=True)
+            tao_bao_cao_btn = st.button("✨ Tổng hợp báo cáo Zalo", use_container_width=True)
 
         if tao_bao_cao_btn:
             ngay_str = ngay_bao_cao_zalo.strftime('%d/%m')
@@ -130,49 +130,40 @@ with tab1:
             
             zalo_text = f"{ten_hien_thi} báo cáo tiến độ kéo cáp ngày {ngay_str}:\n"
             
-            # Duyệt qua các trạm của đơn vị (hoặc tất cả nếu là admin)
             has_data = False
             for _, row in df.iterrows():
                 t_name = str(row[col_tram]).strip() if col_tram else "Trạm"
                 
-                # Lấy số liệu thực hiện và số liệu được giao để làm mẫu X/Y
-                # Kéo cáp thực tế (mét đổi ra km)
                 k_thuc_te = pd.to_numeric(row[col_keocap], errors='coerce') if col_keocap else 0
                 if pd.isna(k_thuc_te): k_thuc_te = 0
-                k_thuc_te_km = k_thuc_te / 1000.0
                 
-                # Kéo cáp tổng giao (tổng các cột 12fo, 24fo nếu có, hoặc cột tủ giao)
-                k_giao_km = 0
+                # Tính tổng mét cáp giao từ các cột 12fo/24fo
+                k_giao_m = 0
                 for c in cols_cap_giao:
                     val_giao = pd.to_numeric(row[c], errors='coerce')
                     if pd.notna(val_giao):
-                        k_giao_km += val_giao
-                if k_giao_km > 100: # Nếu tính theo mét thì quy đổi ra km
-                    k_giao_km = k_giao_km / 1000.0
-                if k_giao_km == 0:
-                    k_giao_km = k_thuc_te_km # Dự phòng nếu không có cột giao thì lấy bằng thực tế hoặc mặc định
+                        k_giao_m += val_giao
+                if k_giao_m == 0:
+                    k_giao_m = k_thuc_te if k_thuc_te > 0 else 1000 # Dự phòng mặc định
 
-                # Lắp tủ thực tế và giao
                 l_thuc_te = pd.to_numeric(row[col_laptu], errors='coerce') if col_laptu else 0
                 if pd.isna(l_thuc_te): l_thuc_te = 0
                 
                 l_giao = pd.to_numeric(row[col_tu_giao], errors='coerce') if col_tu_giao else 0
-                if pd.isna(l_giao) or l_giao == 0: l_giao = max(l_thuc_te, 1) # Mặc định nếu chưa có cấu hình giao
+                if pd.isna(l_giao) or l_giao == 0: l_giao = max(l_thuc_te, 1)
 
-                # Chỉ đưa vào báo cáo nếu trạm có phát sinh khối lượng kéo cáp hoặc lắp tủ > 0
+                # Chỉ đưa vào báo cáo nếu trạm có phát sinh khối lượng thực tế > 0
                 if k_thuc_te > 0 or l_thuc_te > 0:
                     has_data = True
-                    zalo_text += f"- Trạm {t_name}:\n"
-                    zalo_text += f"+ Kéo cáp: {k_thuc_te_km:g}km/{k_giao_km:g}km\n"
-                    zalo_text += f"+ Lắp tủ: {int(l_thuc_te)}/{int(l_giao)} tủ\n"
+                    zalo_text += f"- Trạm {t_name}: Kéo {int(k_thuc_te):,}m/{int(k_giao_m):,}m | Tủ: {int(l_thuc_te)}/{int(l_giao)}\n"
 
             if not has_data:
                 zalo_text += "(Chưa có dữ liệu thi công thực tế nào được nhập cho ngày này trong hệ thống)\n"
 
-            zalo_text += f"Kế hoạch ngày {ngay_mai_str} {noi_dung_ke_hoach_ngay_mai}"
+            zalo_text += f"\nKế hoạch ngày {ngay_mai_str}: {noi_dung_ke_hoach_ngay_mai}"
             
             st.code(zalo_text, language="text")
-            st.success("Đã tạo xong! Bạn có thể bấm nút Copy ở góc trên bên phải khung trên để dán vào Zalo.")
+            st.success("Đã tổng hợp xong nội dung báo cáo Zalo!")
 
     st.markdown("---")
 
