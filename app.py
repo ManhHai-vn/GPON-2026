@@ -99,7 +99,6 @@ tram_list = [str(t).strip() for t in df[col_tram].dropna().unique().tolist() if 
 tab1, tab2, tab3 = st.tabs(["📈 Thống Kê Tiến Độ", "🏗️ 1. Báo Cáo Thi Công", "📅 2. Kế Hoạch Thi Công"])
 
 with tab1:
-    # Thêm nút làm mới dữ liệu
     col_title, col_btn = st.columns([4, 1])
     with col_title:
         if user["role"] == "admin":
