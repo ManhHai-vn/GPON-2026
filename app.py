@@ -116,8 +116,11 @@ with tab1:
         col_z1, col_z2 = st.columns([2, 1])
         with col_z1:
             ngay_bao_cao_zalo = st.date_input("Chọn ngày báo cáo:", datetime.now(), key="date_zalo")
+            so_doi_zalo = st.number_input("Số đội thi công (ngày kế hoạch):", min_value=1, value=1, step=1)
+            tram_thi_cong_zalo = st.multiselect("Trạm đang/tiếp tục thi công:", options=tram_list, default=[])
             noi_dung_ke_hoach_ngay_mai = st.text_input("Nội dung kế hoạch tiếp theo:", value="tiếp tục triển khai các trạm chưa hoàn thành.")
         with col_z2:
+            st.write("")
             st.write("")
             st.write("")
             tao_bao_cao_btn = st.button("✨ Tổng hợp báo cáo Zalo", use_container_width=True)
@@ -137,14 +140,13 @@ with tab1:
                 k_thuc_te = pd.to_numeric(row[col_keocap], errors='coerce') if col_keocap else 0
                 if pd.isna(k_thuc_te): k_thuc_te = 0
                 
-                # Tính tổng mét cáp giao từ các cột 12fo/24fo
                 k_giao_m = 0
                 for c in cols_cap_giao:
                     val_giao = pd.to_numeric(row[c], errors='coerce')
                     if pd.notna(val_giao):
                         k_giao_m += val_giao
                 if k_giao_m == 0:
-                    k_giao_m = k_thuc_te if k_thuc_te > 0 else 1000 # Dự phòng mặc định
+                    k_giao_m = k_thuc_te if k_thuc_te > 0 else 1000
 
                 l_thuc_te = pd.to_numeric(row[col_laptu], errors='coerce') if col_laptu else 0
                 if pd.isna(l_thuc_te): l_thuc_te = 0
@@ -152,7 +154,6 @@ with tab1:
                 l_giao = pd.to_numeric(row[col_tu_giao], errors='coerce') if col_tu_giao else 0
                 if pd.isna(l_giao) or l_giao == 0: l_giao = max(l_thuc_te, 1)
 
-                # Chỉ đưa vào báo cáo nếu trạm có phát sinh khối lượng thực tế > 0
                 if k_thuc_te > 0 or l_thuc_te > 0:
                     has_data = True
                     zalo_text += f"- Trạm {t_name}: Kéo {int(k_thuc_te):,}m/{int(k_giao_m):,}m | Tủ: {int(l_thuc_te)}/{int(l_giao)}\n"
@@ -160,7 +161,8 @@ with tab1:
             if not has_data:
                 zalo_text += "(Chưa có dữ liệu thi công thực tế nào được nhập cho ngày này trong hệ thống)\n"
 
-            zalo_text += f"\nKế hoạch ngày {ngay_mai_str}: {noi_dung_ke_hoach_ngay_mai}"
+            danh_sach_tram_str = ", ".join(tram_thi_cong_zalo) if tram_thi_cong_zalo else "Chưa chọn trạm"
+            zalo_text += f"\nKế hoạch ngày {ngay_mai_str} ({so_doi_zalo} đội thi công tại các trạm: {danh_sach_tram_str}): {noi_dung_ke_hoach_ngay_mai}"
             
             st.code(zalo_text, language="text")
             st.success("Đã tổng hợp xong nội dung báo cáo Zalo!")
