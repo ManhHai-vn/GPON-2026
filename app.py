@@ -11,7 +11,7 @@ st.set_page_config(
 )
 
 WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwCeCROZKl1_t4iRB9aDdgXJW-43X-N8KUVWvsZiMA5j8bNRwhu5Okx4yavGG1FvydM2Q/exec"
-SHEET_URL = "https://docs.google.com/spreadsheets/d/1wUSpmt-4SyB-yyXmOn5Yox6nCRq7NuLHRpklvisJIuw/edit?gid=0#gid=0"
+SHEET_URL = "https://docs.google.com/spreadsheets/d/1VPbF7bLk6JF97kJEGw-TW1JEheUf4etfDO5bLsphyGs/edit#gid=0"
 
 USERS = {
     "admin": {"pass": "admin123", "role": "admin", "name": "Quản Trị Viên (Admin)"},
@@ -99,6 +99,18 @@ tram_list = [str(t).strip() for t in df[col_tram].dropna().unique().tolist() if 
 tab1, tab2, tab3 = st.tabs(["📈 Thống Kê Tiến Độ", "🏗️ 1. Báo Cáo Thi Công", "📅 2. Kế Hoạch Thi Công"])
 
 with tab1:
+    # Thêm nút làm mới dữ liệu
+    col_title, col_btn = st.columns([4, 1])
+    with col_title:
+        if user["role"] == "admin":
+            st.markdown("### 📊 Tổng quan tiến độ thi công - Hai Nhà Thầu (VCC & Xuân Long)")
+        else:
+            st.markdown(f"### 📊 Tổng quan tiến độ ({user['role']})")
+    with col_btn:
+        if st.button("🔄 Làm Mới Dữ Liệu", use_container_width=True):
+            st.cache_data.clear()
+            st.rerun()
+
     def render_contractor_stats(contractor_name, keywords):
         st.markdown(f"#### 🏢 Nhà thầu: {contractor_name}")
         if col_doitac:
@@ -138,8 +150,6 @@ with tab1:
             st.info(f"Chưa có dữ liệu cho {contractor_name}")
 
     if user["role"] == "admin":
-        st.markdown("### 📊 Tổng quan tiến độ thi công - Hai Nhà Thầu (VCC & Xuân Long)")
-        
         def generate_export_data():
             export_rows = []
             def process_contractor_export(contractor_title, keywords):
@@ -241,7 +251,6 @@ with tab1:
         st.dataframe(df_raw, use_container_width=True, hide_index=True)
 
     else:
-        st.markdown(f"### 📊 Tổng quan tiến độ ({user['role']})")
         role_lower = user["role"].lower()
         if "vcc" in role_lower:
             render_contractor_stats("VCC", ["vcc"])
@@ -252,7 +261,6 @@ with tab1:
 
         st.markdown("### 📋 Danh sách chi tiết các trạm")
         
-        # Nút tải file đối chiếu thi công cho nhà thầu
         csv_doi_chieu = df.to_csv(index=False).encode('utf-8-sig')
         st.download_button(
             label="📥 Tải File Đối Chiếu Thi Công (CSV)",
