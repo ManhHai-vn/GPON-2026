@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 import requests
 import streamlit as st
+import io
 
 st.set_page_config(
     page_title="Quản Lý & Báo Cáo Tiến Độ GPON 2026",
@@ -50,10 +51,18 @@ st.title("📊 HỆ THỐNG QUẢN LÝ & BÁO CÁO TIẾN ĐỘ GPON 2026")
 
 @st.cache_data(ttl=10)
 def load_data():
-    # Sử dụng Google Visualization API để đọc dữ liệu chuẩn xác và né hoàn toàn lỗi 403
     sheet_id = SHEET_URL.split("/d/")[1].split("/")[0]
-    csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&gid=0"
-    df_main = pd.read_csv(csv_url)
+    csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid=0"
+    
+    # Thêm headers giả lập trình duyệt để tránh bị Google chặn 403
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+    response = requests.get(csv_url, headers=headers)
+    if response.status_code != 200:
+        raise Exception(f"Không thể tải dữ liệu từ Google Sheets (Mã lỗi: {response.status_code})")
+        
+    df_main = pd.read_csv(io.StringIO(response.text))
     df_main.columns = [str(c).strip() for c in df_main.columns]
     return df_main
 
